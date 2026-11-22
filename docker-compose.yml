@@ -1,0 +1,123 @@
+# docker compose up --build  -> her şey API key olmadan çalışır (LLM_PROVIDER=mock).
+x-backend: &backend
+  build: ./backend
+  image: scc-backend:local
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    # .env'deki host değerlerini compose ağı içindeki servis adlarıyla ezer.
+    DATABASE_URL: postgres://app:app@db:5432/campaigns?sslmode=disable
+    PROVIDER_URL: http://mock-provider:8090
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: campaigns
+    ports: ["5432:5432"]
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d campaigns"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Migration + seed; bir kez çalışır ve çıkar. Seed idempotenttir.
+  migrate:
+    <<: *backend
+    command: ["/app/migrate"]
+    restart: "no"
+    depends_on:
+      db: { condition: service_healthy }
+
+  mock-provider:
+    <<: *backend
+    command: ["/app/mockprovider"]
+    ports: ["8090:8090"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  api:
+    <<: *backend
+    command: ["/app/api"]
+    ports: ["8080:8080"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health/ready"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+
+  worker:
+    <<: *backend
+    command: ["/app/worker"]
+    ports: ["8081:8081"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      mock-provider: { condition: service_healthy }
+
+  web:
+    build: ./frontend
+    ports: ["3000:80"]
+    depends_on:
+      api: { condition: service_healthy }
+
+  # Yalnızca `make test` için; uygulama DB'sinden ayrı, tmpfs (hızlı, atılabilir).
+  db-test:
+    image: postgres:16-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: campaigns_test
+    ports: ["5433:5432"]
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d campaigns_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # `make test` bunları kullanır: test için host'ta Go/Node gerekmez, yalnızca Docker.
+  test-go:
+    image: golang:1.27            # alpine değil: -race için cgo + gcc gerekir
+    profiles: ["test"]
+    working_dir: /src
+    volumes:
+      - ./backend:/src
+      - gomod:/go/pkg/mod
+      - gocache:/root/.cache/go-build
+    environment:
+      TEST_DATABASE_URL: postgres://app:app@db-test:5432/campaigns_test?sslmode=disable
+    # Modüller önce ayrı adımda ve 3 denemeyle iner: ilk (boş cache) çalıştırmada
+    # geçici bir ağ hatası, her paket için anlamsız "setup failed" yerine net
+    # bir indirme hatası olarak görünsün ve çoğunlukla kendiliğinden geçsin.
+    command:
+      - sh
+      - -c
+      - |
+        for i in 1 2 3; do go mod download && break; echo "go mod download failed (attempt $$i), retrying"; sleep 3; done
+        go mod download && go test -race -count=1 ./...
+    depends_on:
+      db-test: { condition: service_healthy }
+
+  test-web:
+    image: node:24-alpine
+    profiles: ["test"]
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules           # host'un (örn. macOS) native modüllerini container'a sokma
+    command: ["sh", "-c", "npm ci --no-audit --no-fund --silent && npm run typecheck && npm test"]
+
+volumes:
+  dbdata:
+  gomod:
+  gocache:
