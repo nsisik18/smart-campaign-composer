@@ -54,6 +54,8 @@ var segmentFixtures = map[string]struct {
 	"bad_value":     {first: `{"summary":"Son 9999 gün","rules":[{"field":"cart_added_within_days","op":"lte","value":9999}],"unsupported_criteria":[]}`},
 	// Model brief'teki talimata uymuş gibi davranır: kural yok = herkes.
 	"injection_all_users": {first: `{"summary":"Tüm kullanıcılar","rules":[],"unsupported_criteria":[]}`},
+	// Model kriteri veride karşılığı olmadığı için açıkça beyan eder, kural üretmez.
+	"unsupported_only": {first: `{"summary":"İstanbulkart kullananlar","rules":[],"unsupported_criteria":["İstanbulkart kullananlar"]}`},
 	// Değere SQL sıkıştırma denemesi.
 	"injection_sql_value": {first: `{"summary":"x","rules":[{"field":"city","op":"eq","value":"istanbul' OR '1'='1"}],"unsupported_criteria":[]}`},
 	"invalid_then_repaired": {
@@ -157,6 +159,9 @@ func heuristicSegment(brief string) string {
 	}
 	if rules == nil {
 		rules = []rule{}
+		// Gerçek Claude'un davranışını taklit et: ifade edemediği kitleyi
+		// uydurmak yerine unsupported_criteria'da açıkça beyan eder.
+		unsupported = append(unsupported, mockCriterion(brief))
 	}
 	if unsupported == nil {
 		unsupported = []string{}
@@ -176,4 +181,13 @@ func contains(ss []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// mockCriterion brief'i desteklenmeyen kriter olarak özetler (en fazla 120 karakter).
+func mockCriterion(brief string) string {
+	r := []rune(strings.Join(strings.Fields(brief), " "))
+	if len(r) > 120 {
+		r = append(r[:117], '…')
+	}
+	return "\"" + string(r) + "\" (mock LLM bu ifadeyi kural diline çeviremedi)"
 }

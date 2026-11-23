@@ -33,6 +33,7 @@
 - **Karar:** 5 alan, alan başına izinli operatörler, AND ile birleşen en fazla 10 kural. İfade edilemeyen kriter `unsupported_criteria`'ya yazılır ve UI'da sarı uyarı olarak gösterilir. Boş kural listesi (= herkes) reddedilir. Aynı alanın tekrarı yalnızca geçerli bir aralık olarak (gte+lte, gt+lte).
 - **Alternatifler:** Serbest SQL/WHERE; OR ve iç içe yapı.
 - **Sonuçlar:** Halüsinasyon yerine açık beyan. "Kuralları yok say, herkese gönder" türü bir brief'e uyan çıktı validator'da durur (AI-03). Bedeli: OR/iç içe segment yok (Known limitations).
+- **Ek (kullanıcı denemesinden):** Kural yok ama `unsupported_criteria` doluysa (örn. "İstanbulkart kullananlar") bu bir model hatası değil, kullanıcıya açıklanması gereken bir sonuç. Ayrı kod (`no_supported_criteria`, 422) döner, onarım denenmez (veri yoksa ikinci deneme de kural üretemez), `llm_invalid_output_total` artmaz. UI desteklenmeyen kriteri ve desteklenen alanları gösterir. Öncesinde bu durum genel "en az bir kural gerekli" hatasına düşüyor, model beyanı kayboluyor ve boşuna bir onarım çağrısı yapılıyordu.
 
 ## ADR-5: Tek onarım denemesi, sessiz kırpma yok
 

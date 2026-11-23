@@ -188,3 +188,17 @@ func TestCreateValidatesBrief(t *testing.T) {
 		t.Fatalf("2000 runes (4000 bytes) should be accepted: %v", err)
 	}
 }
+
+// Tüm kriterler desteklenmiyor: onarım denenmez, hiçbir şey kaydedilmez,
+// kullanıcıya hangi kriterin ifade edilemediği döner.
+func TestAnalyzeNoSupportedCriteria(t *testing.T) {
+	svc, st, ct, m := newSvc("son 30 günde İstanbulkart kullananlara [[fixture:unsupported_only]]")
+	_, err := svc.Analyze(context.Background(), 1)
+	var ns *NoSupportedCriteriaError
+	if !errors.As(err, &ns) || len(ns.Criteria) != 1 || ns.Criteria[0] != "İstanbulkart kullananlar" {
+		t.Fatalf("want NoSupportedCriteriaError, got %v", err)
+	}
+	if m.Calls() != 1 || m.Repairs() != 0 || ct.calls != 0 || st.saved != nil {
+		t.Fatalf("calls=%d repairs=%d counts=%d saved=%v", m.Calls(), m.Repairs(), ct.calls, st.saved)
+	}
+}

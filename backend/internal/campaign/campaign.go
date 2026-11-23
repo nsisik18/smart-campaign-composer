@@ -69,3 +69,14 @@ func (e *InvalidOutputError) Error() string {
 	}
 	return e.Stage + " output invalid: " + strings.Join(parts, "; ")
 }
+
+// NoSupportedCriteriaError brief'in istediği kitle mevcut alanlarla ifade
+// edilemiyor (422). Model bunu unsupported_criteria ile beyan etti; onarım
+// denenmez. Kullanıcıya neyin desteklenmediği ve neyin desteklendiği gösterilir.
+type NoSupportedCriteriaError struct {
+	Criteria []string
+}
+
+func (e *NoSupportedCriteriaError) Error() string {
+	return "no supported criteria: " + strings.Join(e.Criteria, "; ")
+}

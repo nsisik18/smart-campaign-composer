@@ -39,6 +39,29 @@ var specs = map[Field]fieldSpec{
 	FieldTotalOrders:            {ops: []Op{OpGte, OpLte, OpEq}, parse: intRange(0, 1000)},
 }
 
+// CodeNoSupportedCriteria: kural yok, tüm kriterler desteklenmeyen olarak beyan edildi.
+const CodeNoSupportedCriteria = "no_supported_criteria"
+
+// UnsupportedOnly çıktı geçerli JSON ise ve TEK sorun "hiçbir kriter
+// desteklenmiyor" ise, beyan edilen kriterleri döner. Servis bu durumda
+// onarım denemez (veri yoksa ikinci deneme de kural üretemez).
+func UnsupportedOnly(raw []byte, issues []Issue) ([]string, bool) {
+	if len(issues) != 1 || issues[0].Code != CodeNoSupportedCriteria {
+		return nil, false
+	}
+	var rp rawPlan
+	if err := json.Unmarshal(raw, &rp); err != nil {
+		return nil, false
+	}
+	var out []string
+	for _, c := range rp.UnsupportedCriteria {
+		if c = strings.TrimSpace(c); c != "" && utf8.RuneCountInString(c) <= MaxCriterion {
+			out = append(out, c)
+		}
+	}
+	return out, len(out) > 0
+}
+
 // FieldNames prompt ve hata mesajları için deterministik sıra.
 var FieldNames = []Field{FieldCity, FieldCartAddedWithinDays, FieldPurchasedSinceLastCart, FieldPurchasedWithinDays, FieldTotalOrders}
 
@@ -86,6 +109,12 @@ func validate(rp rawPlan) (Plan, []Issue) {
 	}
 
 	switch {
+	case len(rp.Rules) == 0 && len(p.UnsupportedCriteria) > 0:
+		// Kural yok ama model kriterleri desteklenmeyen olarak beyan etmiş:
+		// brief'in istediği kitle bizim veride ifade edilemiyor (örn.
+		// "İstanbulkart kullananlar"). Bu bir model hatası değil, kullanıcıya
+		// açıklanması gereken bir sonuç; servis onarım denemez.
+		add("rules", CodeNoSupportedCriteria, "brief'teki kriterler mevcut alanlarla ifade edilemiyor: %s", strings.Join(p.UnsupportedCriteria, "; "))
 	case len(rp.Rules) == 0:
 		// Boş kural listesi = tüm müşteri tabanı. v1'de bilinçli olarak
 		// desteklenmez; "kuralları yok say, herkese gönder" türü bir brief

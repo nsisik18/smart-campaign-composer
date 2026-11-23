@@ -239,3 +239,13 @@ func TestMockHeuristicCitySuffixes(t *testing.T) {
 		}
 	}
 }
+
+// Hiçbir kriter tanınmayan brief: mock kural uydurmaz, beyan eder.
+func TestMockDeclaresUnsupportedWhenNothingMatches(t *testing.T) {
+	res, _ := NewMock().Segment(context.Background(), SegmentRequest{Brief: "son 30 günde istnabulkart kullananlara %30 indirim"})
+	_, issues := audience.ParseAndValidate([]byte(res.Text))
+	crit, ok := audience.UnsupportedOnly([]byte(res.Text), issues)
+	if !ok || len(crit) != 1 || !strings.Contains(crit[0], "istnabulkart") {
+		t.Fatalf("%v %v %s", crit, issues, res.Text)
+	}
+}

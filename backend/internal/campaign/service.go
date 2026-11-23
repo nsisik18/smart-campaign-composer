@@ -116,6 +116,11 @@ func (s *Service) segmentWithRepair(ctx context.Context, c Campaign) (audience.P
 	if issues == nil {
 		return plan, false, nil
 	}
+	if crit, ok := audience.UnsupportedOnly([]byte(res.Text), issues); ok {
+		// Geçerli bir sonuç, model hatası değil: invalid metriği artmaz.
+		s.log.Info("segment has no supported criteria", "campaign_id", c.ID, "count", len(crit))
+		return audience.Plan{}, false, &NoSupportedCriteriaError{Criteria: crit}
+	}
 
 	s.metrics.InvalidOutput(llm.StageSegment, "first")
 	s.log.Info("segment invalid, repairing", "campaign_id", c.ID, "issues", issueCodes(issues))
@@ -128,6 +133,9 @@ func (s *Service) segmentWithRepair(ctx context.Context, c Campaign) (audience.P
 		return audience.Plan{}, false, err
 	}
 	plan, issues = audience.ParseAndValidate([]byte(res2.Text))
+	if crit, ok := audience.UnsupportedOnly([]byte(res2.Text), issues); ok {
+		return audience.Plan{}, false, &NoSupportedCriteriaError{Criteria: crit}
+	}
 	if issues != nil {
 		s.metrics.InvalidOutput(llm.StageSegment, "repair")
 		return audience.Plan{}, false, &InvalidOutputError{Stage: "segment", Issues: issues}

@@ -138,3 +138,21 @@ func TestCityInNormalizesAndDedupes(t *testing.T) {
 		t.Fatalf("got %v", p.Rules[0].Value)
 	}
 }
+
+func TestNoSupportedCriteriaIsDistinctFromEmpty(t *testing.T) {
+	raw := []byte(`{"summary":"x","rules":[],"unsupported_criteria":["İstanbulkart kullananlar"]}`)
+	_, issues := ParseAndValidate(raw)
+	if crit, ok := UnsupportedOnly(raw, issues); !ok || crit[0] != "İstanbulkart kullananlar" {
+		t.Fatalf("%v", issues)
+	}
+	// Kural + desteklenmeyen kriter birlikteyse normal geçerli plan (uyarı UI'da).
+	if _, issues := ParseAndValidate([]byte(`{"summary":"x","rules":[{"field":"city","op":"eq","value":"istanbul"}],"unsupported_criteria":["VIP"]}`)); issues != nil {
+		t.Fatal(issues)
+	}
+	// Başka bir hatayla birlikteyse onarım yolu korunur.
+	raw = []byte(`{"summary":"","rules":[],"unsupported_criteria":["x"]}`)
+	_, issues = ParseAndValidate(raw)
+	if _, ok := UnsupportedOnly(raw, issues); ok {
+		t.Fatal("must not short-circuit when there are other issues")
+	}
+}

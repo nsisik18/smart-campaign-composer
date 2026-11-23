@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/insider-case/smart-campaign-composer/internal/audience"
 	"github.com/insider-case/smart-campaign-composer/internal/campaign"
 	"github.com/insider-case/smart-campaign-composer/internal/content"
 	"github.com/insider-case/smart-campaign-composer/internal/llm"
@@ -204,6 +205,7 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		cfErr  *campaign.ConflictError
 		outErr *campaign.InvalidOutputError
 		ctErr  *campaign.InvalidContentError
+		nsErr  *campaign.NoSupportedCriteriaError
 	)
 	switch {
 	case errors.Is(err, campaign.ErrNotFound):
@@ -220,6 +222,14 @@ func writeServiceError(w http.ResponseWriter, err error) {
 		}
 		WriteError(w, http.StatusUnprocessableEntity, "invalid_"+outErr.Stage,
 			"AI çıktısı onarımdan sonra da doğrulamadan geçmedi", details)
+	case errors.As(err, &nsErr):
+		fields := make([]string, len(audience.FieldNames))
+		for i, f := range audience.FieldNames {
+			fields[i] = string(f)
+		}
+		WriteError(w, http.StatusUnprocessableEntity, audience.CodeNoSupportedCriteria,
+			"brief'teki hedef kitle kriterleri mevcut verilerle ifade edilemiyor",
+			[]any{map[string]any{"unsupported_criteria": nsErr.Criteria, "supported_fields": fields}})
 	case errors.As(err, &ctErr):
 		details := make([]any, len(ctErr.Issues))
 		for i, is := range ctErr.Issues {
