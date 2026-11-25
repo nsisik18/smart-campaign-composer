@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -125,6 +126,9 @@ func Validate(c Content, b Bounds) (Content, Checks, []Issue) {
 		for _, is := range checkPlaceholders(tpl) {
 			add(path, is.code, "%s", is.msg)
 		}
+		if m := suffixRe.FindString(tpl); m != "" {
+			add(path, "placeholder_suffix", "placeholder'a ek getirilmiş (%q): Türkçe ek değere göre değişir (İzmir'de, Bursa'da), şablonda doğru yazılamaz; cümleyi eksiz kurun (ör. \"{{city}} için\")", m)
+		}
 		if fc.RenderedMax > limit {
 			if fc.RenderedMax != fc.TemplateLength {
 				add(path, "too_long", "%s kişiselleştirme sonrası %d karakter (en uzun ad %q ile), en fazla %d", label, fc.RenderedMax, pv.FirstName, limit)
@@ -167,6 +171,11 @@ func Validate(c Content, b Bounds) (Content, Checks, []Issue) {
 }
 
 type phIssue struct{ code, msg string }
+
+// suffixRe placeholder'a yapışık Türkçe eki yakalar: "{{city}}'da",
+// "{{first_name}}’in", "{{city}}da". Ünlü uyumu değere bağlı olduğu için
+// ("Bursa'da" / "İzmir'de") tek bir şablon her alıcıda doğru olamaz.
+var suffixRe = regexp.MustCompile(`\{\{(first_name|city)\}\}['’]?\p{L}+`)
 
 // checkPlaceholders izinli placeholder'ları çıkarır; kalan her "{{" veya
 // "}}" bilinmeyen ya da bozuk placeholder'dır. "{{ first_name }}" gibi

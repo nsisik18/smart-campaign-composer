@@ -16,12 +16,14 @@ var segmentPromptV1 string
 
 const SegmentPromptVersion = "segment_v1"
 
-//go:embed prompts/copy_v1.md
-var copyPromptV1 string
+//go:embed prompts/copy_v2.md
+var copyPrompt string
 
-const CopyPromptVersion = "copy_v1"
+// copy_v2: placeholder'a ek yasağı ve uygulanamayan kriterler (gerçek
+// Claude ile yapılan testte bulunan iki hata, DECISIONS ADR-16/17).
+const CopyPromptVersion = "copy_v2"
 
-func CopyPrompt() string { return copyPromptV1 }
+func CopyPrompt() string { return copyPrompt }
 
 // SegmentPrompt testlerin prompt/allowlist senkronunu denetleyebilmesi için.
 func SegmentPrompt() string { return segmentPromptV1 }
@@ -54,11 +56,14 @@ type Result struct {
 // CopyRequest içerik üretimi girdisi. Müşteri verisi YOK: yalnızca brief,
 // segment özeti ve render sınırı için en uzun değerlerin UZUNLUKLARI.
 type CopyRequest struct {
-	Brief           string
-	SegmentSummary  string
-	MaxFirstNameLen int
-	MaxCityLen      int
-	Repair          *Repair
+	Brief          string
+	SegmentSummary string
+	// UnsupportedCriteria brief'te olup kitleye uygulanamayan kriterler.
+	// Metin bu kitleye özelmiş gibi yazılmasın diye prompt'a gider.
+	UnsupportedCriteria []string
+	MaxFirstNameLen     int
+	MaxCityLen          int
+	Repair              *Repair
 }
 
 // Provider gerçek Claude ve mock için ortak arayüz.

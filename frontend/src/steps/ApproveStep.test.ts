@@ -26,8 +26,8 @@ describe('ApproveStep', () => {
     expect(btn(w, 'count-sms_text').text()).toBe('23 / 160')
     expect(btn(w, 'approve').attributes('disabled')).toBeUndefined()
 
-    // 146 'ş' + placeholder: şablon 160, render 161 -> kırmızı, kaydet/onay kapalı.
-    await btn(w, 'edit-sms_text').setValue('{{first_name}}' + 'ş'.repeat(146))
+    // placeholder + boşluk + 145 'ş': şablon 160, render 161 -> kırmızı, kaydet/onay kapalı.
+    await btn(w, 'edit-sms_text').setValue('{{first_name}} ' + 'ş'.repeat(145))
     expect(btn(w, 'count-sms_text').text()).toBe('161 / 160')
     expect(btn(w, 'count-sms_text').classes()).toContain('text-rose-600')
     expect(btn(w, 'save').attributes('disabled')).toBeDefined()
@@ -60,5 +60,23 @@ describe('ApproveStep', () => {
     expect(JSON.parse(String((init as RequestInit).body))).toEqual({ expected_version: 5 })
     expect(w.text()).toContain('sayfayı yenileyin')
     expect(w.emitted('updated')).toBeUndefined()
+  })
+
+  it('flags a suffix attached to a placeholder', async () => {
+    const w = mount(ApproveStep, { props: { view: view() } })
+    await btn(w, 'edit-sms_text').setValue("Merhaba {{first_name}}, {{city}}'da indirim")
+    expect(w.text()).toContain("placeholder'a ek getirilmiş")
+    expect(btn(w, 'save').attributes('disabled')).toBeDefined()
+  })
+
+  it('requires acknowledging unapplied criteria before approving', async () => {
+    const v = view()
+    v.campaign.segment = { summary: 'İzmir', rules: [], unsupported_criteria: ['VIP müşteriler'] }
+    const w = mount(ApproveStep, { props: { view: v } })
+    await btn(w, 'approve').trigger('click')
+    expect(btn(w, 'confirm-unsupported').text()).toContain('VIP müşteriler')
+    expect(btn(w, 'confirm-approve').attributes('disabled')).toBeDefined()
+    await btn(w, 'ack-unsupported').setValue(true)
+    expect(btn(w, 'confirm-approve').attributes('disabled')).toBeUndefined()
   })
 })

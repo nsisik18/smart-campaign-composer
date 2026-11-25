@@ -249,3 +249,36 @@ func TestMockDeclaresUnsupportedWhenNothingMatches(t *testing.T) {
 		t.Fatalf("%v %v %s", crit, issues, res.Text)
 	}
 }
+
+// Gerçek Claude testinde bulundu: şema map olarak gidince properties
+// alfabetik sıralanıyor ve model önce email_body üretiyordu. SDK'nın
+// gerçekten gönderdiği gövdede sıra sms_text, email_subject, email_body
+// olmalı; uygulanamayan kriterler de kullanıcı mesajında olmalı.
+func TestAnthropicCopyRequestOrderAndUnsupported(t *testing.T) {
+	var raw string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		raw = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest) // retry edilmez; yalnızca isteği görmek istiyoruz
+		_, _ = io.WriteString(w, `{"type":"error","error":{"type":"invalid_request_error","message":"x"}}`)
+	}))
+	defer ts.Close()
+
+	a := NewAnthropic(AnthropicConfig{APIKey: "test", Model: "claude-sonnet-5-5", Timeout: 5 * time.Second, BaseURL: ts.URL})
+	_, _ = a.StreamCopy(context.Background(), CopyRequest{
+		Brief: "b", SegmentSummary: "İzmir", UnsupportedCriteria: []string{"VIP müşteriler"},
+		MaxFirstNameLen: 15, MaxCityLen: 8,
+	}, func(string) {})
+
+	i, j, k := strings.Index(raw, `"sms_text"`), strings.Index(raw, `"email_subject"`), strings.Index(raw, `"email_body"`)
+	if i < 0 || !(i < j && j < k) {
+		t.Fatalf("schema property order must be sms_text, email_subject, email_body; got %d %d %d", i, j, k)
+	}
+	if !strings.Contains(raw, "VIP") || !strings.Contains(raw, "Uygulanamayan kriterler") {
+		t.Fatal("unsupported criteria not sent to the copy prompt")
+	}
+	if !strings.Contains(raw, "ek getirme") {
+		t.Fatal("copy_v2 system prompt not sent")
+	}
+}

@@ -136,9 +136,29 @@
   - `make test` her şeyi container'da çalıştırır; host'ta yalnızca Docker gerekir.
 - **Sonuçlar:** Testler paralel paketlerde birbirini etkilemiyor. Gerçek Claude ile davranış `make probe` ile ayrıca doğrulanır.
 
+## ADR-16: Placeholder'a ek getirilemez
+
+- **Bağlam:** Gerçek Claude ile yapılan testte metinlerin çoğunda `{{city}}'da`, `{{city}}'a`, `{{city}}'dan` vardı. Türkçe ek ünlü uyumuna göre değişir: aynı şablon "Bursa'a" ve "İzmir'dan" gibi yanlış metinler üretiyordu. Mock bunu hiçbir zaman göstermezdi.
+- **Karar:**
+  - Validator, placeholder'a yapışık eki (`}}` sonrası isteğe bağlı kesme işareti ve harf) `placeholder_suffix` hatası sayar. Bu, tek onarım çağrısını tetikler. İnsan düzenlemesine de aynı kural uygulanır, frontend anında gösterir.
+  - Prompt `copy_v2` eki baştan yasaklar: cümle eksiz kurulur ("{{city}} için"). Kitle tek şehirse şehir adı doğru ekiyle düz yazılabilir ("İzmir'deki").
+- **Alternatifler:** Şehir ve ad için Türkçe ek tablosu (son ünlüye göre -da/-de, -ya/-ye). Reddedildi: 5 şehir için bile bir ek motoru demek, adlarda kural daha da karmaşık. Eksiz cümle her değerde doğru ve basit.
+- **Sonuçlar:** Gerçek Claude ile 7 brief'lik tekrar testte ek hatası 0. Onarıma gerek kalmadı; validator güvenlik ağı olarak duruyor.
+
+## ADR-17: Uygulanamayan kriterler metne ve onaya taşınır
+
+- **Bağlam:** "İzmir'deki VIP müşterilere" brief'inde VIP kuralı uygulanamadı (veri yok), kitle tüm İzmir oldu. Ama gerçek Claude metne "VIP müşterilerimize özel" yazdı: mesaj VIP olmayan herkese yanlış bir iddiayla gidecekti. Aynı şekilde "son 2 yıl" (365 gün sınırı) düşünce kitle tüm İstanbul'a genişliyordu.
+- **Karar:**
+  - `unsupported_criteria` içerik prompt'una gider: "bu kriterler kitleye uygulanmadı, metni onlara özelmiş gibi yazma".
+  - Onay diyaloğu bu kriterleri tekrar listeler. "Kitlenin daha geniş olduğunu biliyorum" kutusu işaretlenmeden gönderim yapılamaz.
+- **Alternatifler:** Desteklenmeyen kriter varsa analizi tamamen reddetmek. Reddedildi: "İzmir'deki herkese" gönderim pazarlamacı için meşru bir seçenek; kararı bilgilendirilmiş insana bırakmak case'in "son karar insanda" ilkesine uyuyor.
+- **Sonuçlar:** Tekrar testte metin "İzmir'deki müşterilerimize özel" diyor, VIP iddiası yok. Kontrol arayüzde; doğrudan API çağrısı onay kutusunu atlayabilir (auth olmayan bir demo için kabul edilen sınır).
+
+Not: Aynı testte şema alan sırası da düzeltildi. `properties` Go `map`'i olduğu için JSON'a alfabetik yazılıyor, model önce `email_body`'yi üretiyordu; artık sıralı struct (SMS ilk akar). Test, SDK'nın gönderdiği gövdede sırayı doğruluyor.
+
 ## Known limitations
 
-- **Gerçek Claude:** Gerçek modelle uçtan uca doğrulama `make probe` ve `LLM_PROVIDER=anthropic` ile yapılmalı; çıktı kalitesi değişkendir. Mock'un anahtar kelime sezgisi bilerek basit.
+- **Gerçek Claude:** `claude-sonnet-5-5` (effort low) ile uçtan uca doğrulandı (README → Gerçek Claude ile doğrulama). LLM çıktısı yine de değişkendir; kurallar Go'da zorunlu olduğu için kötü bir çıktı gönderime ulaşamaz, yalnızca onarım veya kullanıcıya hata olur. Mock'un anahtar kelime sezgisi bilerek basit.
 - **Refusal fallback:** `claude-sonnet-5-5` reddettiğinde başka modele otomatik düşme (server-side fallback, beta endpoint) eklenmedi; ret kullanıcıya net hata olarak dönüyor.
 - **Tek worker replica:** Hız sınırı süreç içi; çoklu replica için dağıtık limiter gerekir.
 - **Pano:** Bağlı istemci başına DB sorgusu; çok izleyicide kampanya başına tek yayıncı ya da LISTEN/NOTIFY gerekir.

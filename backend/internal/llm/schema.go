@@ -49,15 +49,25 @@ func SegmentSchema() map[string]any {
 // CopySchema düz içerik şeması: tek seviye obje, yalnızca string alanlar.
 // FieldStream parser'ı tam olarak bu şekle dayanır. Uzunluk kuralları
 // açıklamada; zorlama content.Validate'te.
+//
+// properties bilerek struct: Go map'leri JSON'a alfabetik sırayla yazılır
+// (email_body, email_subject, sms_text) ve model alanları şemadaki sırayla
+// üretir. Struct alan sırası korunur; UI'da ilk kart olan SMS ilk akar.
 func CopySchema() map[string]any {
 	return map[string]any{
 		"type": "object",
-		"properties": map[string]any{
-			"sms_text":      map[string]any{"type": "string", "description": "SMS metni; placeholder'lar render edildikten sonra en fazla 160 karakter."},
-			"email_subject": map[string]any{"type": "string", "description": "Email konusu; tek satır, render sonrası en fazla 80 karakter."},
-			"email_body":    map[string]any{"type": "string", "description": "Düz metin email gövdesi, HTML yok."},
+		"properties": copyProperties{
+			SMSText:      map[string]any{"type": "string", "description": "SMS metni; placeholder'lar render edildikten sonra en fazla 160 karakter."},
+			EmailSubject: map[string]any{"type": "string", "description": "Email konusu; tek satır, render sonrası en fazla 80 karakter."},
+			EmailBody:    map[string]any{"type": "string", "description": "Düz metin email gövdesi, HTML yok."},
 		},
 		"required":             []string{"sms_text", "email_subject", "email_body"},
 		"additionalProperties": false,
 	}
+}
+
+type copyProperties struct {
+	SMSText      map[string]any `json:"sms_text"`
+	EmailSubject map[string]any `json:"email_subject"`
+	EmailBody    map[string]any `json:"email_body"`
 }

@@ -35,6 +35,14 @@ const saving = ref(false)
 const approving = ref(false)
 const error = ref<ApiError | null>(null)
 const confirmOpen = ref(false)
+// Uygulanamayan kriter varsa kitle brief'in istediğinden geniştir; onay
+// diyaloğunda bunu açıkça kabul etmeden gönderilemez.
+const unsupported = computed(() => c.value.segment?.unsupported_criteria ?? [])
+const ackUnsupported = ref(false)
+watch(confirmOpen, (open) => {
+  if (open) ackUnsupported.value = false
+})
+const canConfirm = computed(() => !approving.value && (unsupported.value.length === 0 || ackUnsupported.value))
 
 const canSave = computed(() => dirty.value && local.value.length === 0 && !saving.value)
 const canApprove = computed(() => !dirty.value && local.value.length === 0 && serverIssues.value.length === 0 && !approving.value && c.value.status === 'generated')
@@ -154,6 +162,16 @@ const fmt = (n: number) => n.toLocaleString('tr-TR')
           <p class="rounded bg-slate-50 p-2 whitespace-pre-wrap">{{ render(draft.sms_text, vars) }}</p>
           <p class="rounded bg-slate-50 p-2 font-medium">{{ render(draft.email_subject, vars) }}</p>
         </div>
+        <div v-if="unsupported.length" class="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-test="confirm-unsupported">
+          <p class="font-medium">Şu kriterler kitleye uygulanamadı; mesaj bu kriterleri taşımayan kişilere de gidecek:</p>
+          <ul class="list-disc pl-5">
+            <li v-for="u in unsupported" :key="u">{{ u }}</li>
+          </ul>
+          <label class="flex items-center gap-2">
+            <input v-model="ackUnsupported" type="checkbox" data-test="ack-unsupported" />
+            Kitlenin daha geniş olduğunu biliyorum
+          </label>
+        </div>
         <p class="text-xs text-slate-600">
           Onaydan sonra metinler değiştirilemez. Alıcı listesi bu anda dondurulur; gönderim anında izni kapanmış kişiler atlanır.
         </p>
@@ -163,7 +181,7 @@ const fmt = (n: number) => n.toLocaleString('tr-TR')
             type="button"
             data-test="confirm-approve"
             class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            :disabled="approving"
+            :disabled="!canConfirm"
             @click="approve"
           >
             {{ approving ? 'Kuyruğa alınıyor…' : 'Onayla ve gönder' }}

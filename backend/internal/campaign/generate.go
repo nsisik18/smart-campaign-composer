@@ -60,10 +60,11 @@ func (s *Service) RunGenerate(ctx context.Context, g *Generation, emit func(Even
 	emit(Event{"started", map[string]any{"version": c.Version}})
 
 	req := llm.CopyRequest{
-		Brief:           c.Brief,
-		SegmentSummary:  c.Segment.Summary,
-		MaxFirstNameLen: content.RuneLen(g.bounds.LongestFirstName),
-		MaxCityLen:      content.RuneLen(g.bounds.LongestCity),
+		Brief:               c.Brief,
+		SegmentSummary:      c.Segment.Summary,
+		UnsupportedCriteria: c.Segment.UnsupportedCriteria,
+		MaxFirstNameLen:     content.RuneLen(g.bounds.LongestFirstName),
+		MaxCityLen:          content.RuneLen(g.bounds.LongestCity),
 	}
 
 	ct, checks, issues, raw, err := s.streamOnce(ctx, req, g.bounds, emit)

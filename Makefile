@@ -15,6 +15,9 @@ down:
 test: test-go test-web
 
 test-go:
+	@# Önceki çalıştırmadan kalan test DB'si silinmiş bir ağa bağlı kalmış olabilir
+	@# (araya `docker compose down` girdiyse). tmpfs'tir, silmek veri kaybettirmez.
+	@docker compose --profile test rm -fsv db-test >/dev/null 2>&1 || true
 	docker compose --profile test run --rm test-go
 
 test-web:

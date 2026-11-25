@@ -37,7 +37,7 @@ func TestValidContent(t *testing.T) {
 // AI-06: limit render edilmiş halde ve rune bazında uygulanır.
 func TestLengthAfterRender(t *testing.T) {
 	// Şablon tam 160 rune: kendisi sığıyor, en uzun adla render edilince 161 olur.
-	tpl := "{{first_name}}" + strings.Repeat("ş", 146) // 14 + 146 = 160
+	tpl := "{{first_name}} " + strings.Repeat("ş", 145) // 14 + 1 + 145 = 160 (boşluk: ek kuralına takılmasın)
 	c := valid()
 	c.SMSText = tpl
 	_, ch, issues := Validate(c, bounds)
@@ -134,5 +134,35 @@ func TestRender(t *testing.T) {
 	got := Render("Merhaba {{first_name}}, {{city}} {{first_name}}", Vars{FirstName: "Ayşe", City: "İzmir"})
 	if got != "Merhaba Ayşe, İzmir Ayşe" {
 		t.Fatal(got)
+	}
+}
+
+// Gerçek Claude testinde bulundu: "{{city}}'a" Bursa için "Bursa'a" olur.
+// Ünlü uyumu değere bağlı, bu yüzden placeholder'a yapışık ek her zaman hata.
+func TestPlaceholderSuffixRejected(t *testing.T) {
+	bad := []string{
+		"{{city}}'da indirim başladı",
+		"{{city}}’dan sevgiler", // tipografik kesme işareti
+		"{{first_name}}'in sepeti",
+		"Selam {{first_name}}cim", // kesme işaretsiz ek
+	}
+	for _, s := range bad {
+		c := valid()
+		c.SMSText = s
+		if _, _, issues := Validate(c, bounds); !slices.Contains(codes(issues), "sms_text:placeholder_suffix") {
+			t.Errorf("%q must be rejected, got %v", s, issues)
+		}
+	}
+	ok := []string{
+		"Merhaba {{first_name}}, {{city}} için indirim!",
+		"{{city}} şehrindeki fırsatlar: {{first_name}}.",
+		"Merhaba {{first_name}}'",
+	}
+	for _, s := range ok {
+		c := valid()
+		c.SMSText = s
+		if _, _, issues := Validate(c, bounds); issues != nil {
+			t.Errorf("%q must pass, got %v", s, issues)
+		}
 	}
 }

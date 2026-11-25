@@ -33,6 +33,10 @@ Hepsi testler, ölçüm ya da kod incelemesiyle yakalandı.
 | Tam 100/s dışarıdan 101 ölçülüyordu (fencepost + scheduler gecikmesi) | Uçtan uca test, tekrarlı ölçüm | %3 açık güvenlik payı, ADR-8 |
 | Mock LLM "İstanbullulara" yazımında şehri kaçırıyordu (450 yerine 971) | Compose'ta HTTP smoke test | Ek tanıyan sezgi + test |
 | Mock JSON alan sırası alfabetikti; email gövdesi SMS'ten önce akıyordu | Tarayıcıda gözlem | Şema sırası korunuyor |
+| Placeholder'a Türkçe ek: `{{city}}'a` → "Bursa'a", `{{city}}'dan` → "İzmir'dan" (çoğu metinde) | Gerçek Claude ile 30 senaryoluk test | Validator kuralı + prompt `copy_v2` + frontend uyarısı (ADR-16); tekrar testte 0/7 |
+| "İzmir'deki VIP müşterilere": VIP kuralı uygulanamadı ama metin "VIP müşterilerimize özel" diyordu | Gerçek Claude çıktısını okuyarak | Uygulanamayan kriterler içerik prompt'una ve onay diyaloğuna taşındı (ADR-17) |
+| Gerçek Claude alanları alfabetik sırayla üretiyordu (önce email gövdesi) | Gerçek Claude testinde alan sırası ölçümü | Şema `properties` map yerine sıralı struct; SDK isteği üzerinden test |
+| `make test`, araya `docker compose down` girince silinmiş ağa bağlı test DB yüzünden kırılıyordu | Teslim öncesi temiz ortam testi | `make test-go` önce eski test DB container'ını kaldırıyor |
 | BLUEPRINT §4.4'teki "en uzun adla render eşdeğerdir" iddiası | Akıl yürütme | Üst sınır olduğu not edildi; onayda alıcı bazlı kesin kontrol (ADR-11) |
 | Testlerdeki yanlış beklentiler (ör. sınır dışı örnek, farklı gövdeyle tekrar) | Başarısız testin incelenmesi | Kod değil test düzeltildi; neden yazıldı |
 

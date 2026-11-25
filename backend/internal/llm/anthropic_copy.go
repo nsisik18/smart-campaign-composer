@@ -9,8 +9,12 @@ import (
 )
 
 func copyUserMessage(req CopyRequest) string {
-	return fmt.Sprintf("<brief>\n%s\n</brief>\n\nHedef kitle: %s\n\nRender sınırı: kitledeki en uzun {{first_name}} değeri %d karakter, en uzun {{city}} değeri %d karakter.",
+	msg := fmt.Sprintf("<brief>\n%s\n</brief>\n\nHedef kitle: %s\n\nRender sınırı: kitledeki en uzun {{first_name}} değeri %d karakter, en uzun {{city}} değeri %d karakter.",
 		req.Brief, req.SegmentSummary, req.MaxFirstNameLen, req.MaxCityLen)
+	if len(req.UnsupportedCriteria) > 0 {
+		msg += "\n\nUygulanamayan kriterler (kitleye UYGULANMADI, metin bunlara özelmiş gibi yazılmamalı): " + strings.Join(req.UnsupportedCriteria, "; ")
+	}
+	return msg
 }
 
 func (a *Anthropic) StreamCopy(ctx context.Context, req CopyRequest, onText func(string)) (Result, error) {
@@ -27,7 +31,7 @@ func (a *Anthropic) StreamCopy(ctx context.Context, req CopyRequest, onText func
 	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(a.cfg.Model),
 		MaxTokens: 4096,
-		System:    []anthropic.TextBlockParam{{Text: copyPromptV1}},
+		System:    []anthropic.TextBlockParam{{Text: copyPrompt}},
 		Messages:  msgs,
 		OutputConfig: anthropic.OutputConfigParam{
 			Effort: anthropic.OutputConfigEffort(a.cfg.Effort),

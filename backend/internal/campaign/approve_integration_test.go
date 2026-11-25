@@ -217,7 +217,7 @@ func TestEditContent(t *testing.T) {
 		t.Fatalf("invalid edit: %v", err)
 	}
 	long := *v.Campaign.Content
-	long.SMSText = "{{first_name}}" + strings.Repeat("a", 146) // 160 şablon, 161 render
+	long.SMSText = "{{first_name}} " + strings.Repeat("a", 145) // 160 şablon, 161 render
 	if _, err := svc.EditContent(ctx, id, ver, long); !errors.As(err, &ice) || ice.Issues[0].Code != "too_long" {
 		t.Fatalf("too long edit: %v", err)
 	}
@@ -259,13 +259,17 @@ func TestEditContent(t *testing.T) {
 func TestApproveRollsBackOnPerRecipientViolation(t *testing.T) {
 	pool, svc, v := generatedCampaign(t)
 	ctx := context.Background()
-	tpl := "{{first_name}}" + strings.Repeat("a", 154) // render = 154 + ad uzunluğu; 7+ harfli adlarda 160 aşılır, kısa adlarda aşılmaz
+	tpl := "{{first_name}} " + strings.Repeat("a", 153) // render = 154 + ad uzunluğu; 7+ harfli adlarda 160 aşılır, kısa adlarda aşılmaz
 	if _, err := pool.Exec(ctx, `UPDATE campaigns SET sms_text=$2 WHERE id=$1`, v.Campaign.ID, tpl); err != nil {
 		t.Fatal(err)
 	}
 	var ice *campaign.InvalidContentError
-	if _, err := svc.Approve(ctx, v.Campaign.ID, v.Campaign.Version); !errors.As(err, &ice) || ice.Issues[0].Path != "sms_text" {
-		t.Fatalf("want per-recipient violation, got %v", err)
+	// Hatanın şablon kurallarından değil, alıcı bazlı render kontrolünden
+	// geldiğinden emin ol ("müşteri #N için ..."); aksi halde test başka bir
+	// kurala takılıp yeşil kalabilir.
+	if _, err := svc.Approve(ctx, v.Campaign.ID, v.Campaign.Version); !errors.As(err, &ice) || ice.Issues[0].Path != "sms_text" ||
+		ice.Issues[0].Code != "too_long" || !strings.Contains(ice.Issues[0].Message, "müşteri #") {
+		t.Fatalf("want per-recipient violation, got %v %+v", err, ice)
 	}
 	got, _ := svc.Get(ctx, v.Campaign.ID)
 	if got.Campaign.Status != campaign.StatusGenerated || countDeliveries(t, pool, v.Campaign.ID) != 0 {
