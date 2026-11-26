@@ -1,6 +1,6 @@
 // Package httpapi HTTP katmanıdır: routing, request decode, hata formatı,
 // SSE. Kural: handler içinde SQL, prompt veya retry kararı olmaz; handler
-// servisi çağırır ve sonucu HTTP'ye çevirir (BLUEPRINT §2).
+// servisi çağırır ve sonucu HTTP'ye çevirir.
 package httpapi
 
 import (
@@ -37,7 +37,6 @@ func NewRouter(d Deps) http.Handler {
 	r.Get("/health/live", platform.LiveHandler())
 	// api yalnızca DB'ye bağımlı. Provider'a worker konuşur; provider
 	// düşünce api'yi "not ready" saymak kullanıcı akışını gereksiz keser.
-	// (BLUEPRINT §8'den bilinçli sapma; DECISIONS'a yazılacak.)
 	r.Get("/health/ready", platform.ReadyHandler(platform.Check{Name: "db", Fn: d.DB.Ping}))
 	r.Handle("/metrics", platform.MetricsHandler(d.Registry))
 

@@ -1,6 +1,6 @@
 # DECISIONS
 
-Önemli mimari kararlar ADR formatında (Bağlam, Karar, Alternatifler, Sonuçlar). En altta, karar anında yazılmış gün gün uygulama notları var; ADR'ler onların özetidir. Plan: [BLUEPRINT.md](BLUEPRINT.md).
+Önemli mimari kararlar ADR formatında (Bağlam, Karar, Alternatifler, Sonuçlar). En altta, karar anında yazılmış faz faz uygulama notları var; ADR'ler onların özetidir. Plan: [BLUEPRINT.md](BLUEPRINT.md).
 
 **Tek cümle:** Yedi günlük bir case'te dağıtık altyapı yerine doğruluğu göstermeyi seçtim: LLM sınırında doğrulama, onayda atomik snapshot, gönderimde lease + fencing, idempotency ve kanal başına hız sınırı.
 
@@ -156,6 +156,13 @@
 
 Not: Aynı testte şema alan sırası da düzeltildi. `properties` Go `map`'i olduğu için JSON'a alfabetik yazılıyor, model önce `email_body`'yi üretiyordu; artık sıralı struct (SMS ilk akar). Test, SDK'nın gönderdiği gövdede sırayı doğruluyor.
 
+## ADR-18: Claude çıktısı brief'e sadık olmalı
+
+- **Bağlam:** Model brief'teki %30'u %20 yazabilir, ya da brief'te olmayan bir link veya kupon kodu uydurabilir. Uzunluk ve placeholder kuralları bunu yakalamaz.
+- **Karar:** Yalnızca üretimde çalışan deterministik bir kontrol. Çıktıdaki her yüzde brief'te olmalı, brief'teki yüzde çıktıda en az bir kez geçmeli. Brief'te olmayan link ve kupon kodu reddedilir. İhlal, diğer doğrulama hatalarıyla aynı tek onarım çağrısını tetikler. İnsan düzenlemesine uygulanmaz: pazarlamacı teklifi bilerek değiştirebilir.
+- **Alternatifler:** İkinci bir LLM çağrısıyla "sadakat puanı". Reddedildi: yavaş, pahalı ve kendisi de doğrulanması gereken bir çıktı.
+- **Sonuçlar:** Tarih ve fiyat gibi serbest metin uydurmaları kapsam dışı; prompt'ta yasak, kontrolde değil. Bilinen sınırlar: brief yüzdeyi yazıyla verirse ("yüzde otuz") metindeki "%30" eşleşmez ve onarıma gider; Türkçe büyük harfli kodlar ("İNDİRİM30") yakalanmaz; brief'te olmayan "%100 güvenli ödeme" veya "PS5" gibi ifadeler bilerek uydurma sayılır.
+
 ## Known limitations
 
 - **Gerçek Claude:** `claude-sonnet-5-5` (effort low) ile uçtan uca doğrulandı (README → Gerçek Claude ile doğrulama). LLM çıktısı yine de değişkendir; kurallar Go'da zorunlu olduğu için kötü bir çıktı gönderime ulaşamaz, yalnızca onarım veya kullanıcıya hata olur. Mock'un anahtar kelime sezgisi bilerek basit.
@@ -170,11 +177,11 @@ Not: Aynı testte şema alan sırası da düzeltildi. `properties` Go `map`'i ol
 
 ---
 
-## Uygulama notları (gün gün)
+## Uygulama notları (faz faz)
 
 Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 
-#### Gün 1 (iskelet, seed, health)
+#### Faz 1 (iskelet, seed, health)
 
 - **api'nin readiness'i yalnızca DB'ye bakar** (BLUEPRINT §8'den sapma). Provider'a yalnızca worker konuşur; provider düşünce api'yi "not ready" saymak brief/analiz/üretim akışını gereksiz keser. Worker'ın `/health/ready`'si DB + provider'a bakar.
 - **Seed zamanları mutlak değil, seed anına göre ofset.** Aksi halde "son 30 gün" kohortu takvim ilerledikçe boşalır. Testler sabit anchor kullanır.
@@ -183,7 +190,7 @@ Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 - **Status kolonlarına CHECK constraint** eklendi (BLUEPRINT şemasında yoktu): yazım hatalı bir durum DB seviyesinde reddedilir.
 - **Test DB'si ayrı compose servisi** (`db-test`, profil `test`, tmpfs). Uygulama verisine dokunmaz; testcontainers yerine seçildi çünkü Docker zaten şart ve ek bağımlılık getirmiyor.
 
-### Gün 2 notları (segment)
+### Faz 2 notları (segment)
 
 - **Boş kural listesi reddedilir.** "Tüm müşteriler" segmenti v1'de desteklenmiyor; böylece "kuralları yok say, herkese gönder" türü bir brief'e uyan çıktı validator'da durur (AI-03). Prompt da bu durumda boş kural + `unsupported_criteria` üretmesini söylüyor; backend bunu yine reddeder ve alan bazlı hata gösterir.
 - **Aynı alanın tekrarı yalnızca aralık olarak.** `total_orders` için gte+lte, `purchased_within_days` için gt+lte; boş aralık reddedilir. Diğer her tekrar çelişki sayılır.
@@ -192,12 +199,12 @@ Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 - **Analiz sırasında satır kilitlenmez.** LLM çağrısı saniyeler sürer; `FOR UPDATE` yerine yazma anında `WHERE version = $expected` (optimistic lock). Arada kampanya değiştiyse 409.
 - **DB'den okunan segment de validator'dan geçer.** JSONB bizim yazdığımız normalize plan olsa da tipli hale getirmek ve şema kaymasını yakalamak için aynı yol.
 - **Testler için her pakete ayrı geçici veritabanı** (`internal/testdb`). `go test` paketleri paralel çalıştırır; ortak DB'de seed'ler birbirini truncate ederdi.
-- **Segment çağrısı streaming değil.** Segment kısa, kullanıcıya akıtılacak metin yok; streaming yalnızca içerik üretiminde (Gün 3).
+- **Segment çağrısı streaming değil.** Segment kısa, kullanıcıya akıtılacak metin yok; streaming yalnızca içerik üretiminde (Faz 3).
 - **`CLAUDE_EFFORT=low` varsayılan.** Segment çıkarma kısa bir yapılandırma görevi; gerçek Claude ile denendikten sonra gerekirse yükseltilecek.
 
-### Gün 3 notları (içerik + streaming)
+### Faz 3 notları (içerik + streaming)
 
-- **Render kontrolü bir üst sınırdır, "eşdeğer" değil** (BLUEPRINT §4.4 düzeltmesi). En uzun ad ve en uzun şehir farklı müşterilere ait olabilir; ikisiyle birlikte render etmek gerçek en kötü durumun üst sınırını verir. Uzunluk her placeholder değerinde monoton arttığı için bu sınırı geçen şablon hiçbir alıcıda limiti aşmaz. Bedeli: nadiren, aslında sığacak bir şablon reddedilebilir. Güvenli taraf bu; onay anında her alıcı ayrıca render edilip kontrol edilecek (Gün 4).
+- **Render kontrolü bir üst sınırdır, "eşdeğer" değil** (BLUEPRINT §4.4 düzeltmesi). En uzun ad ve en uzun şehir farklı müşterilere ait olabilir; ikisiyle birlikte render etmek gerçek en kötü durumun üst sınırını verir. Uzunluk her placeholder değerinde monoton arttığı için bu sınırı geçen şablon hiçbir alıcıda limiti aşmaz. Bedeli: nadiren, aslında sığacak bir şablon reddedilebilir. Güvenli taraf bu; onay anında her alıcı ayrıca render edilip kontrol edilecek (Faz 4).
 - **Modele render sınırının UZUNLUKLARI verilir**, adların kendisi değil. Böylece model payı kendisi hesaplar ve PII gitmez.
 - **Artımlı parser yalnızca önizleme içindir.** Otoriter içerik, stream bitince tam metnin `json.Unmarshal` + `content.Validate` ile doğrulanmış halidir. "validated" olayı stream edilen metni backend'in normalize ettiği içerikle değiştirir.
 - **Üretim başında versiyon ayrılır** (`BeginGeneration`), kayıt yalnızca o versiyonla yapılır. İki sekmeden üretim ya da üretim sırasında yeniden analiz: eski stream `failed {code: superseded}` ile biter ve hiçbir şeyin üzerine yazmaz.
@@ -206,9 +213,9 @@ Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 - **Placeholder yazımı katı.** `{{ first_name }}` (boşluklu) veya `{{First_Name}}` reddedilir: render düz string replace olduğu için müşteriye ham placeholder gitmesin. Repair bunu düzeltir.
 - **Dış boşluklar kırpılır, içerik kısaltılmaz.** Trim zararsız bir normalizasyon; uzun metin her zaman hata olur.
 - **SSE keepalive (10 s).** Sonnet 5.5'te thinking kapatılamıyor; ilk metinden önceki sessizlikte proxy'lerin bağlantıyı kesmemesi için `: ping` yorumu yazılır. İlk metin gecikmesi `first_text_ms` olarak loglanır.
-- **Üretim `POST` + `fetch` stream** (EventSource değil): EventSource POST desteklemez ve üretim bir yan etki. Dashboard (Gün 6) GET + EventSource kullanacak.
+- **Üretim `POST` + `fetch` stream** (EventSource değil): EventSource POST desteklemez ve üretim bir yan etki. Dashboard (Faz 6) GET + EventSource kullanacak.
 
-### Gün 4 notları (düzenleme + onay)
+### Faz 4 notları (düzenleme + onay)
 
 - **İnsan düzenlemesi Claude çıktısıyla aynı validator'dan geçer** (`content.Validate`, aynı bounds). Geçersiz düzenleme kaydedilmez (422, alan bazlı hata); taslak frontend'de kalır. Frontend'deki kontrol yalnızca anlık geri bildirim, otorite backend.
 - **Kaydedilmemiş değişiklikle onay yok.** Onay her zaman DB'deki, kullanıcının gördüğü versiyondaki içeriği gönderir (`expected_version`). Ekrandaki taslakla DB'deki içeriğin ayrışması mümkün değil.
@@ -219,7 +226,7 @@ Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 - **Idempotency anahtarı `internal/delivery`'de** ve formatı bir testle sabitlendi (bağımsız `shasum` ile hesaplanan değer): çalışan bir kampanyanın ortasında anahtar formatının değişmesi duplicate gönderim demek.
 - **Mock LLM şehir ekini tanır** ("İstanbullulara"). Öncesinde kesme işaretsiz yazımda şehir kuralı düşüyor ve 450 yerine 971 kişi seçiliyordu; gerçek Claude'da sorun yok, ama demo yanıltmasın.
 
-### Gün 5 notları (worker: kuyruk, retry, idempotency)
+### Faz 5 notları (worker: kuyruk, retry, idempotency)
 
 - **Garanti: at-least-once deneme + provider tarafında idempotent etki.** Exactly-once HTTP çağrısı iddia edilmiyor. Aynı teslimatın her denemesi aynı `Idempotency-Key` ile gider; provider anahtarı daha önce kabul ettiyse yeni gönderim yapmadan aynı makbuzu döner.
 - **Sahiplik kilitle değil lease ile.** Claim kısa bir transaction'dır (`FOR UPDATE SKIP LOCKED` + `UPDATE ... RETURNING`); HTTP çağrısı sırasında transaction açık tutulmaz. Lease 30 s, provider timeout 5 s (config 3x'ten kısa lease'i reddeder).
@@ -238,7 +245,7 @@ Karar anında yazılan notlar; bazıları yukarıdaki ADR'lerde özetlendi.
 
 **Canlı doğrulama (compose, deterministik profil):** 2.070 teslimat ~17 s'de bitti; provider kabul 2.028 = DB sent 2.028; 49 geç kabul → 49 timeout → 49 aynı anahtarla tekrar → 49 makbuz tekrarı; kanal başına en yüksek 98/s; eşik reddi 0. Worker gönderim ortasında `SIGKILL` ile öldürüldü (61 satır in_flight): yeniden başlatınca lease'ler doldu, 56 satır aynı anahtarla tamamlandı; provider yeni kabul 904 = DB sent 904.
 
-### Gün 6 notları (canlı pano)
+### Faz 6 notları (canlı pano)
 
 - **Pano GET + EventSource, üretim POST + fetch stream.** EventSource yeniden bağlanmayı bedavaya verir ve pano yan etkisiz bir okuma; üretim ise POST (yan etki) olduğu için fetch ile okunuyor.
 - **Her olay TAM durumdur** (`snapshot` bağlanınca, `stats` 500 ms'de bir). Delta yayınlamak yerine tam durum: kaçırılan olay veya yeniden bağlanma hiçbir şeyi bozmaz, istemcide birleştirme mantığı yok. Kampanya başına veri küçük (iki kanal, son 20 deneme).

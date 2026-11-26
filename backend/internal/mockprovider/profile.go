@@ -2,7 +2,6 @@ package mockprovider
 
 import (
 	"hash/fnv"
-	"math/rand/v2"
 	"sync"
 	"time"
 )
@@ -18,7 +17,7 @@ const (
 	faultSlowAccept       // kabul eder (makbuz yazılır) ama cevabı istemci timeout'undan SONRA döner
 )
 
-// Oranlar (BLUEPRINT §7): ~%10 429, ~%5 503, ~%2 422, ~%2 geç kabul.
+// Oranlar: ~%10 429, ~%5 503, ~%2 422, ~%2 geç kabul.
 // Kümülatif eşikler, 0..99 kovası üzerinden.
 const (
 	p429  = 10
@@ -34,8 +33,6 @@ const (
 //     hariç: kalıcı olduğu için her çağrıda). Sonuç key + çağrı numarasına
 //     bağlı, flaky değil: aynı seed ve aynı kampanya her seferinde aynı
 //     teslimatlarda aynı hataları üretir.
-//   - chaos: aynı oranlar, her çağrıda bağımsız rastgele. Bir teslimat
-//     art arda hata alabilir; retry ve MaxAttempts gerçekten sınanır.
 func (s *Server) decide(key string, callNo int) fault {
 	var bucket int
 	switch s.profile {
@@ -49,8 +46,6 @@ func (s *Server) decide(key string, callNo int) fault {
 		if callNo > 1 {
 			return faultNone
 		}
-	case "chaos":
-		bucket = rand.IntN(100)
 	default:
 		return faultNone
 	}

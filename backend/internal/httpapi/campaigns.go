@@ -64,8 +64,8 @@ func (h campaignHandlers) analyze(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// generate içerik üretimini SSE gövdeli POST olarak stream eder
-// (BLUEPRINT §4.6). Ön koşul hataları stream açılmadan normal JSON döner.
+// generate içerik üretimini SSE gövdeli POST olarak stream eder. Ön koşul
+// hataları stream açılmadan normal JSON döner.
 func (h campaignHandlers) generate(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(w, r)
 	if !ok {
@@ -129,7 +129,7 @@ func (h campaignHandlers) approve(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, res)
 }
 
-// events canlı pano akışıdır (GET + EventSource, BLUEPRINT §8):
+// events canlı pano akışıdır (GET + EventSource):
 //
 //	event: snapshot   bağlanınca (ve yeniden bağlanınca) tam durum
 //	event: stats      her 500 ms'de tam durum (delta değil: istemci
@@ -197,7 +197,7 @@ func pathID(w http.ResponseWriter, r *http.Request) (int64, bool) {
 	return id, true
 }
 
-// writeServiceError domain hatalarını BLUEPRINT §8'deki koda çevirir.
+// writeServiceError domain hatalarını HTTP koduna çevirir.
 // Bilinmeyen hatalar 500 ve genel mesajdır; iç detay istemciye sızmaz.
 func writeServiceError(w http.ResponseWriter, err error) {
 	var (

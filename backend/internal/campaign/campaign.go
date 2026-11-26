@@ -1,5 +1,5 @@
-// Package campaign kampanya durum makinesi ve akışını yönetir
-// (BLUEPRINT §3.1): draft -> analyzed -> generated -> approved/sending -> completed*.
+// Package campaign kampanya durum makinesi ve akışını yönetir:
+// draft -> analyzed -> generated -> approved/sending -> completed*.
 package campaign
 
 import (

@@ -50,7 +50,7 @@ type Options struct {
 	Anchor time.Time
 }
 
-// Şehir dağılımı (BLUEPRINT §5.1). Kümülatif ağırlık.
+// Şehir dağılımı. Kümülatif ağırlık.
 var cities = []struct {
 	key string
 	w   float64

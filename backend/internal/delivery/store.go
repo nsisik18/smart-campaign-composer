@@ -31,7 +31,7 @@ type Store struct{ db *pgxpool.Pool }
 
 func NewStore(db *pgxpool.Pool) *Store { return &Store{db: db} }
 
-// Claim bir kanal için en fazla limit iş alır ve lease'ler (BLUEPRINT §6.2).
+// Claim bir kanal için en fazla limit iş alır ve lease'ler.
 //
 //   - Uygun satır: (queued|retry_wait ve zamanı gelmiş) VEYA (in_flight ve
 //     lease'i dolmuş: sahibi öldü ya da takıldı).
@@ -164,7 +164,7 @@ func (s *Store) Record(ctx context.Context, j Job, o Outcome) error {
 }
 
 // FinalizeCampaigns terminal olmayan teslimatı kalmamış "sending"
-// kampanyaları kapatır (BLUEPRINT §6.6): en az bir failed varsa
+// kampanyaları kapatır: en az bir failed varsa
 // completed_with_errors, yoksa completed. Tek ifade, idempotent: birden
 // çok worker ya da tekrar çağrı güvenli.
 func (s *Store) FinalizeCampaigns(ctx context.Context) ([]int64, error) {

@@ -1,4 +1,4 @@
-// mock-provider: bağımsız sahte SMS/email sağlayıcısı (BLUEPRINT §7).
+// mock-provider: bağımsız sahte SMS/email sağlayıcısı.
 package main
 
 import (

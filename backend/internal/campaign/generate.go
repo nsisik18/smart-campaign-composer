@@ -9,7 +9,7 @@ import (
 	"github.com/insider-case/smart-campaign-composer/internal/llm"
 )
 
-// Event SSE'ye yazılacak tek olaydır (BLUEPRINT §4.6). Servis HTTP'yi
+// Event SSE'ye yazılacak tek olaydır. Servis HTTP'yi
 // bilmez; handler Event'leri text/event-stream'e çevirir.
 type Event struct {
 	Name string
@@ -119,6 +119,11 @@ func (s *Service) streamOnce(ctx context.Context, req llm.CopyRequest, b content
 		s.log.Info("stream preview parser stopped", "err", perr.Error())
 	}
 	ct, checks, issues := content.ParseAndValidate([]byte(res.Text), b)
+	if issues == nil {
+		if issues = content.CheckFidelity(req.Brief, ct); issues != nil {
+			ct = content.Content{}
+		}
+	}
 	return ct, checks, issues, res.Text, nil
 }
 

@@ -2,7 +2,7 @@
 // kurallarını uygular: placeholder allowlist'i, render ve rune bazlı limitler.
 //
 // Kurallar Go'da zorunludur; frontend yalnızca anlık geri bildirim verir.
-// Aynı Validate hem Claude çıktısına hem insan düzenlemesine (Gün 4) uygulanır.
+// Aynı Validate hem Claude çıktısına hem insan düzenlemesine uygulanır.
 package content
 
 import (
@@ -39,7 +39,7 @@ func (i Issue) String() string { return i.Path + ": " + i.Message }
 
 // Bounds render kontrolü için kitledeki en uzun değerlerdir.
 //
-// Not (BLUEPRINT §4.4 düzeltmesi): en uzun ad ve en uzun şehir farklı
+// Not: en uzun ad ve en uzun şehir farklı
 // müşterilere ait olabilir; bu yüzden bu kontrol her alıcıyı tek tek render
 // etmeye "eşdeğer" değil, onun bir ÜST SINIRIDIR. Uzunluk her placeholder
 // değerinde monoton arttığından, bu sınırı geçen şablon hiçbir alıcıda
@@ -84,7 +84,7 @@ type Checks struct {
 }
 
 // Normalize dış boşlukları kırpar. İçerik kısaltılmaz; uzun metin sessizce
-// kırpılmaz, hata olur (BLUEPRINT §4.5).
+// kırpılmaz, hata olur.
 func Normalize(c Content) Content {
 	return Content{
 		SMSText:      strings.TrimSpace(c.SMSText),

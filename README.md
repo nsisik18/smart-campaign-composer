@@ -10,9 +10,19 @@ Insider One, AI Software Engineer case (2026). Kararlar: [DECISIONS.md](DECISION
 2. **İzni olmayan kanala mesaj gitmez.** İzin filtresi segmentten bağımsız uygulanır ve gönderimden hemen önce tekrar kontrol edilir.
 3. **Worker çöküp yeniden başlasa da aynı kişiye aynı mesaj ikinci kez gitmez.** Bunu lease, fencing ve her denemede aynı `Idempotency-Key` sağlar (Q-06 testi ve canlı `SIGKILL` denemesi).
 
+## Ekran görüntüleri
+
+Gerçek Claude (`claude-sonnet-5-5`) ile, örnek brief.
+
+| Kitle | Mesajlar (stream sırasında) |
+|---|---|
+| ![Kitle](docs/screenshots/1-kitle.jpg) | ![Mesajlar](docs/screenshots/2-mesajlar-stream.jpg) |
+| **Onay** | **Canlı gönderim** |
+| ![Onay](docs/screenshots/3-onay.jpg) | ![Canlı gönderim](docs/screenshots/4-canli-gonderim.jpg) |
+
 ## Kurulum
 
-Gereken: Docker (Compose v2). API key gerekmez; varsayılan `LLM_PROVIDER=mock`.
+Gereken: Docker (Compose v2). API key gerekmez: `.env`'de key yoksa mock LLM, varsa gerçek Claude kullanılır.
 
 ```bash
 cp .env.example .env
@@ -26,9 +36,9 @@ docker compose up --build
 | Worker | http://localhost:8081 (`/health/ready` = DB + provider, `/metrics`) |
 | Mock provider | http://localhost:8090 (`/send`, `/health`, `/stats`) |
 
-`migrate` servisi migration'ları uygular, 5.000 müşterilik deterministik seed'i yazar ve çıkar. Seed tekrar çalışırsa veriyi atlar.
+`migrate` servisi migration'ları uygular, 5.000 müşterilik deterministik seed'i yazar ve çıkar. Seed tekrar çalışırsa veriyi atlar. Postgres host'a port açmaz (makinede çalışan bir Postgres ile çakışmasın); erişim için `docker compose exec db psql -U app campaigns`.
 
-**Gerçek Claude ile:** `.env` içinde `LLM_PROVIDER=anthropic` ve `ANTHROPIC_API_KEY=...` ayarlayın. Model `CLAUDE_MODEL` (varsayılan `claude-sonnet-5-5`), derinlik `CLAUDE_EFFORT` (varsayılan `low`). Key yalnızca backend'de durur.
+**Gerçek Claude ile:** `.env` içinde `ANTHROPIC_API_KEY=...` ayarlamak yeterli; `LLM_PROVIDER=mock|anthropic` seçimi zorlar. Model `CLAUDE_MODEL` (varsayılan `claude-sonnet-5-5`), derinlik `CLAUDE_EFFORT` (varsayılan `low`). Key yalnızca backend'de durur.
 
 ```bash
 make test    # Go unit + integration (gerçek Postgres) + Vitest; hepsi container'da, host'ta yalnızca Docker
@@ -37,7 +47,7 @@ make lint    # gofmt, go vet, vue-tsc (host'ta Go + Node gerekir)
 make probe   # gerçek Claude ile structured output + streaming denemesi (ANTHROPIC_API_KEY gerekir)
 ```
 
-`make test` ilk çalıştırmada imajları ve bağımlılıkları indirir (birkaç dakika); sonraki çalıştırmalar cache'ten gelir. Host'ta Go 1.27 + Node 24 varsa `make test-local` daha hızlıdır.
+`make test` ilk çalıştırmada imajları ve bağımlılıkları indirir (birkaç dakika); sonraki çalıştırmalar cache'ten gelir.
 
 ## Demo akışı
 
@@ -56,7 +66,6 @@ make probe   # gerçek Claude ile structured output + streaming denemesi (ANTHRO
 
 - `none`: her şey başarılı.
 - `deterministic` (varsayılan): ilk denemede ~%10 429 (`Retry-After: 1`), ~%5 503, ~%2 kalıcı 422 ve ~%2 "kabul et ama cevabı worker'ın timeout'undan sonra dön". İkinci denemede başarı.
-- `chaos`: aynı oranlar, her denemede rastgele.
 
 Provider kendi tarafında kanal başına 110/s eşiği uygular.
 
@@ -122,6 +131,7 @@ PostgreSQL 16  <----- worker (Go): claim (SKIP LOCKED + lease), kanal başına l
 | AI-02/03 | 21 geçersiz çıktı türü ve injection çıktıları reddedilir; geçersiz plan SQL'e ulaşmaz, tam bir onarım denenir | `audience/validate_test.go`, `campaign/service_test.go` |
 | AI-04/05 | Bozuk JSON ve `max_tokens` kesilmesinde kayıt yok; ilk çıktı geçersizse tek onarımla geçerli | `campaign/generate_test.go` |
 | AI-06/07 | Render sonrası rune limiti (160 şablon + en uzun ad = 161 reddedilir), bilinmeyen/bozuk placeholder | `content/content_test.go` |
+| AI-10 | Placeholder'a Türkçe ek reddi; teklif sadakati (%30 → %20, uydurma link veya kupon) onarıma gider | `content/content_test.go`, `content/fidelity_test.go`, `campaign/generate_test.go` |
 | AI-08 | Artımlı parser her byte bölmesinde `encoding/json` ile birebir | `llm/fieldstream_test.go` |
 | AI-09 | `İstanbul`/`Istanbul`/`ISTANBUL`/`ıstanbul` normalizasyonu | `audience/validate_test.go` |
 | AUD-01/02 | Alıcı listesinde izinsiz kimse yok; onaydan sonra kapanan izin `skipped`, provider çağrılmaz | `audience/…integration_test.go`, `delivery/integration_test.go` |
@@ -134,7 +144,7 @@ PostgreSQL 16  <----- worker (Go): claim (SKIP LOCKED + lease), kanal başına l
 
 ## Gerçek Claude ile doğrulama
 
-`claude-sonnet-5-5`, `CLAUDE_EFFORT=low`, mock provider `deterministic` profil. Tekrar etmek için: `.env`'de `LLM_PROVIDER=anthropic` + key, `docker compose up --build`, ardından `set -a && . ./.env && set +a && make probe` (`make probe` host'ta Go ile çalışır ve `.env`'i kendisi okumaz).
+`claude-sonnet-5-5`, `CLAUDE_EFFORT=low`, mock provider `deterministic` profil. Tekrar etmek için: `.env`'de key, `docker compose up --build`, ardından `set -a && . ./.env && set +a && make probe` (`make probe` host'ta Go ile çalışır ve `.env`'i kendisi okumaz).
 
 | Ne | Sonuç |
 |---|---|

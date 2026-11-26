@@ -2,7 +2,7 @@
 // bağımsız HTTP servisidir. Bizim DB'ye dokunmaz; tek durumu bellekteki
 // receipt map'idir (gerçek bir dış servis gibi).
 //
-// ── Idempotency sözleşmesi (BLUEPRINT §6.5) ────────────────────────────
+// ── Idempotency sözleşmesi ──────────────────────────────────────────────
 // Bu dosyadaki en kritik kısım receiptStore'dur; satır satır inceleme için
 // adımlar:
 //
@@ -120,7 +120,7 @@ func WithSlowDelay(d time.Duration) Option      { return func(s *Server) { s.slo
 
 func NewServer(profile string, log *slog.Logger, opts ...Option) *Server {
 	switch profile {
-	case "none", "deterministic", "chaos":
+	case "none", "deterministic":
 	default:
 		log.Warn("unknown mock profile, using none", "requested", profile)
 		profile = "none"

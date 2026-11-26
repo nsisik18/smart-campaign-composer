@@ -18,11 +18,10 @@ func CityDisplay(key string) string { return cityDisplay[key] }
 
 // NormalizeCity serbest yazılmış şehir adını kanonik key'e çevirir.
 //
-// Türkçe casefold tuzağı: strings.ToLower("İ") "i̇" (i + U+0307 birleşik
-// nokta) üretir, ToLowerSpecial(TurkishCase, "I") ise "ı" üretir. İkisi de
-// "istanbul" ile eşleşmez. Bu yüzden önce dört i varyantını (İ, I, ı, i)
-// düz "i"ye indirir, birleşik noktayı atar, kalan Türkçe harfleri ASCII'ye
-// katlarız. Kanonik key'ler zaten ASCII olduğundan karşılaştırma tek yönlüdür.
+// Dört i varyantı (İ, I, ı, i) düz "i"ye indirilir: Türkçe kuralla
+// (ToLowerSpecial) "I" "ı" olur ve eşleşmez; "İ" ayrışmış yazılmışsa
+// (i + U+0307) birleşik nokta atılır. Kalan Türkçe harfler ASCII'ye katlanır,
+// çünkü kanonik key'ler ASCII.
 func NormalizeCity(s string) (string, bool) {
 	var b strings.Builder
 	for _, r := range strings.TrimSpace(s) {

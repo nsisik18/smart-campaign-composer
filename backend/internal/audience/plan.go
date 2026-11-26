@@ -3,7 +3,7 @@
 //
 // Güvenlik sınırı burasıdır, prompt değil: Claude'dan gelen hiçbir string
 // SQL metnine girmez. Alan/operatör allowlist'i, her alan için sabit SQL
-// parçası ve parametre olarak geçen değerler (BLUEPRINT §4.3).
+// parçası ve parametre olarak geçen değerler.
 package audience
 
 // Field ve Op kanonik değerleri. Claude'dan gelen enum'lar büyük/küçük harf

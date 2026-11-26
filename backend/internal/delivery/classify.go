@@ -41,7 +41,7 @@ type Policy struct {
 	Rand        func() float64
 }
 
-// Classify BLUEPRINT §6.4 tablosunun kodudur. attempts, BU denemenin
+// Classify provider cevabını sonuca çevirir (tablo aşağıda). attempts, BU denemenin
 // numarasıdır (claim sırasında artırılmış değer; 1-tabanlı).
 //
 //	2xx                    -> sent

@@ -1,12 +1,12 @@
-// claudeprobe: Gün 1 doğrulama denemesi (BLUEPRINT §4.2).
+// claudeprobe: gerçek Claude ile structured output + streaming denemesi (make probe).
 //
 // Soru: Go SDK ile `output_config.format = json_schema` VE streaming aynı
 // istekte birlikte çalışıyor mu; text delta'lar JSON metnini gerçekten
 // parça parça mı getiriyor (artımlı parser'ın varsayımı), stop_reason ve
 // son JSON beklenen şekilde mi?
 //
-// Ürün kodu değildir; Gün 3'te internal/llm'deki anthropic istemcisi bu
-// denemenin sonuçlarına göre yazılır. Çalıştırma:
+// Ürün kodu değildir; internal/llm'deki istemci bu denemenin sonuçlarına
+// göre yazıldı. Çalıştırma:
 //
 //	ANTHROPIC_API_KEY=... go run ./cmd/claudeprobe [-schema copy|segment] [-effort low]
 //	go run ./cmd/claudeprobe -check-maxlength   # API maxLength'i reddediyor mu?
@@ -41,7 +41,7 @@ func main() {
 	if model == "" {
 		model = "claude-sonnet-5-5"
 	}
-	client := anthropic.NewClient(option.WithMaxRetries(1)) // BLUEPRINT: tek retry
+	client := anthropic.NewClient(option.WithMaxRetries(1)) // üründeki istemciyle aynı: tek retry
 
 	var schema map[string]any
 	var system, user string

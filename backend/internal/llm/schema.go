@@ -2,7 +2,7 @@ package llm
 
 // SegmentSchema structured output için JSON şeması.
 //
-// Notlar (BLUEPRINT §4.2):
+// Notlar:
 //   - Tüm objelerde additionalProperties:false ve tüm alanlar required.
 //   - Uzunluk/aralık kuralları şemaya konmaz (API maxLength/minimum gibi
 //     kısıtları desteklemiyor); zorlama tamamen audience.Validate'te.

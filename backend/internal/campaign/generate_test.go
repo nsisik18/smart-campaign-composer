@@ -206,3 +206,25 @@ func TestBeginGeneratePreconditions(t *testing.T) {
 		t.Fatal("no LLM call before preconditions pass")
 	}
 }
+
+// Model teklifi değiştirir, link ve kupon uydurursa onarım tetiklenir.
+func TestGenerateFidelityRepair(t *testing.T) {
+	svc, st, _, m := newGenSvc("Sepete ekleyip almayanlara %30 indirim [[copy:invented_offer]]")
+	rec := run(t, svc)
+	if got := rec.names(); !slices.Equal(got, []string{"started", "delta", "repairing", "delta", "validated"}) {
+		t.Fatalf("events %v", got)
+	}
+	errs := rec.events[slices.IndexFunc(rec.events, func(e Event) bool { return e.Name == "repairing" })].Data.(map[string]any)["errors"].([]content.Issue)
+	var got []string
+	for _, e := range errs {
+		got = append(got, e.Code)
+	}
+	for _, want := range []string{"offer_mismatch", "invented_code", "invented_link", "offer_missing"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("missing %s in %v", want, got)
+		}
+	}
+	if m.Repairs() != 1 || st.savedContent == nil || !strings.Contains(st.savedContent.SMSText, "%30") {
+		t.Fatalf("repairs=%d saved=%+v", m.Repairs(), st.savedContent)
+	}
+}

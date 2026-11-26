@@ -7,30 +7,19 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// Pacer kanal başına hız sınırıdır (BLUEPRINT §6.3).
-//
-// rate.NewLimiter(r, 1): burst 1. Klasik büyük burst'lü limiter boşta
-// biriken token'larla bir saniye içinde r'yi aşan patlamaya izin verir;
-// burst 1 ile iki istek BAŞLANGICI arasında en az 1/r (100/s için 10 ms)
-// olur, yani herhangi bir kayan 1 s penceresinde en fazla r başlangıç.
-//
-// Saat ve uyku enjekte edilir: ReserveN(now) / DelayFrom(now) gerçek saate
-// bakmadan çalışır, böylece RATE-01 testi sahte saatle, beklemeden koşar.
+// Pacer kanal başına hız sınırıdır. Burst 1: iki istek başlangıcı arasında
+// en az 1/r süre olur, böylece hiçbir 1 saniyelik pencerede r'yi aşmaz.
+// Büyük burst'lü limiter boşta biriken token'larla bunu aşabilirdi.
+// Saat ve uyku testte değiştirilir.
 type Pacer struct {
 	lim   *rate.Limiter
 	now   func() time.Time
 	sleep func(context.Context, time.Duration) error
 }
 
-// NewPacer perSecond sözleşme sınırıdır (100). margin bir güvenlik payıdır
-// (örn. 0.03): limiter perSecond*(1-margin) hızında çalışır.
-//
-// Neden pay: burst 1 limiter başlangıçları tam 1/r aralıkla verir, yani
-// r+1 başlangıç tam olarak 1 s'ye yayılır. Bırakılan goroutine'in uyanması
-// (scheduler, GC) birkaç yüz mikrosaniye bile gecikirse, DIŞARIDAN ölçen
-// biri (provider) aynı 1 s penceresinde r+1 istek görür. Uçtan uca testte
-// pay olmadan tutarlı biçimde 101 ölçüldü. %3 pay ile pencerede en fazla
-// ~98 başlangıç olur ve ~20 ms'lik oynama tolere edilir; bedeli %3 verim.
+// NewPacer limiter'ı perSecond*(1-margin) hızında kurar. Pay olmadan
+// goroutine uyanma gecikmesi yüzünden provider tarafında 101/s ölçüldü;
+// %3 pay bunu emer (ADR-8).
 func NewPacer(perSecond int, margin float64) *Pacer {
 	effective := float64(perSecond) * (1 - margin)
 	return &Pacer{

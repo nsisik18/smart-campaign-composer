@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Reach UI'daki dört sayı (BLUEPRINT §4.3).
+// Reach UI'daki dört sayı.
 type Reach struct {
 	Matched       int `json:"matched"`
 	SMSEligible   int `json:"sms_eligible"`
@@ -51,7 +51,7 @@ func (r *Repository) Count(ctx context.Context, p Plan, now time.Time) (Reach, e
 }
 
 // Recipients bir kanal için izinli alıcıları döner. Onay transaction'ı
-// (Gün 4) bunu kullanacak; kanal filtresi segment derlemesinden ayrı eklenir.
+// bunu kullanır; kanal filtresi segment derlemesinden ayrı eklenir.
 func (r *Repository) Recipients(ctx context.Context, p Plan, now time.Time, ch Channel) ([]Recipient, error) {
 	where, args, err := Compile(p, now)
 	if err != nil {

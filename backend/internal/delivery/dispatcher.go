@@ -33,24 +33,14 @@ type Config struct {
 	Policy      Policy
 }
 
-// Dispatcher TEK bir kanalın gönderim döngüsüdür. Her kanal kendi
-// Dispatcher'ına, yani kendi limiter'ına ve semaforuna sahiptir: SMS'in
-// yoğunluğu email'i yavaşlatmaz (BLUEPRINT §6.3).
+// Dispatcher tek bir kanalın gönderim döngüsüdür; her kanalın kendi
+// limiter'ı ve semaforu var, SMS yoğunluğu email'i yavaşlatmaz.
 //
-// Akış (Run döngüsünün bir turu):
-//  1. Semaforda kaç boş slot varsa EN FAZLA o kadar iş claim edilir.
-//     Claim edilip semafor beklerken lease'i tükenen iş olmasın diye.
-//  2. Her iş için semafor slotu alınır ve goroutine'de işlenir.
-//  3. process: izin tekrar kontrolü -> LİMİTER -> HTTP -> Classify -> Record.
-//     Limiter HTTP çağrısından HEMEN ÖNCE beklenir. İlk sürümde limiter
-//     goroutine başlamadan bekleniyordu; aradaki DB sorgusunun (izin
-//     kontrolü) değişken gecikmesi başlangıçları yeniden yığıyor ve uçtan
-//     uca testte 1 s'de 105 başlangıç ölçülüyordu. Hız sınırı, isteğin
-//     gerçekten başladığı ana uygulanmalı.
-//
-// Eşzamanlılık hesabı (DECISIONS): ulaşılabilir hız ≈ eşzamanlılık /
-// gecikme. Provider gecikmesi ~500 ms'ye çıkarsa 100/s için ≥ 50 eşzamanlı
-// istek gerekir; daha düşük gecikmede limiter zaten 100/s'de keser.
+// Bir tur: boş semafor slotu kadar iş claim et (beklerken lease tükenmesin),
+// her işi goroutine'de işle: izin kontrolü -> limiter -> HTTP -> sonuç.
+// Limiter HTTP'den hemen önce beklenir ki hız, isteğin gerçekten başladığı
+// ana uygulansın. Eşzamanlılık 50: ~500 ms gecikmede 100/s için gereken
+// miktar (ADR-8).
 type Dispatcher struct {
 	cfg    Config
 	store  JobStore

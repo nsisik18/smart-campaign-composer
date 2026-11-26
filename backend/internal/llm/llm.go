@@ -1,6 +1,6 @@
 // Package llm Claude ile konuşan katmandır. Claude öneri üretir, karar
 // vermez: bu paket yalnızca ham metin döner; doğrulama audience/content
-// paketlerinde, yani güvenilir tarafta yapılır (BLUEPRINT §4.1).
+// paketlerinde, yani güvenilir tarafta yapılır.
 package llm
 
 import (

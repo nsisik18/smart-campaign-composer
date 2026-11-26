@@ -1,7 +1,6 @@
 SHELL := /bin/bash
-TEST_DATABASE_URL ?= postgres://app:app@localhost:5433/campaigns_test?sslmode=disable
 
-.PHONY: up down test test-go test-web test-local seed lint probe
+.PHONY: up down test test-go test-web seed lint probe
 
 up:
 	docker compose up --build
@@ -22,12 +21,6 @@ test-go:
 
 test-web:
 	docker compose --profile test run --rm test-web
-
-# Host'ta Go 1.27 + Node 24 varsa daha hızlı yol.
-test-local:
-	docker compose --profile test up -d --wait db-test
-	cd backend && TEST_DATABASE_URL="$(TEST_DATABASE_URL)" go test -race -count=1 ./...
-	cd frontend && npm ci --silent && npm run test
 
 # Tüm uygulama verisini silip deterministik seed'i yeniden yazar.
 seed:

@@ -34,7 +34,7 @@ type Config struct {
 
 	// mock-provider
 	MockProviderAddr string
-	MockProfile      string // none | deterministic | chaos
+	MockProfile      string // none | deterministic
 }
 
 func LoadConfig() (Config, error) {
@@ -43,7 +43,7 @@ func LoadConfig() (Config, error) {
 		DatabaseURL:         env("DATABASE_URL", "postgres://app:app@localhost:5432/campaigns?sslmode=disable"),
 		LogLevel:            env("LOG_LEVEL", "info"),
 		HTTPAddr:            env("HTTP_ADDR", ":8080"),
-		LLMProvider:         env("LLM_PROVIDER", "mock"),
+		LLMProvider:         os.Getenv("LLM_PROVIDER"),
 		AnthropicAPIKey:     os.Getenv("ANTHROPIC_API_KEY"),
 		ClaudeModel:         env("CLAUDE_MODEL", "claude-sonnet-5-5"),
 		ClaudeTimeout:       envSeconds("CLAUDE_TIMEOUT_SECONDS", 30, &errs),
@@ -59,6 +59,13 @@ func LoadConfig() (Config, error) {
 		MockProviderAddr:    env("MOCK_PROVIDER_ADDR", ":8090"),
 		MockProfile:         env("MOCK_PROFILE", "deterministic"),
 	}
+	// Boşsa key'e göre seç: key varsa gerçek Claude, yoksa mock.
+	if c.LLMProvider == "" {
+		c.LLMProvider = "mock"
+		if c.AnthropicAPIKey != "" {
+			c.LLMProvider = "anthropic"
+		}
+	}
 	if c.LLMProvider != "mock" && c.LLMProvider != "anthropic" {
 		errs = append(errs, fmt.Errorf("LLM_PROVIDER must be mock|anthropic, got %q", c.LLMProvider))
 	}
@@ -66,7 +73,7 @@ func LoadConfig() (Config, error) {
 		errs = append(errs, fmt.Errorf("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY"))
 	}
 	// Lease, provider timeout'undan belirgin uzun olmalı; aksi halde hâlâ
-	// süren bir HTTP çağrısının satırı başka bir claim'e kaptırılır (BLUEPRINT §6.2).
+	// süren bir HTTP çağrısının satırı başka bir claim'e kaptırılır.
 	if c.LeaseDuration < 3*c.ProviderHTTPTimeout {
 		errs = append(errs, fmt.Errorf("DELIVERY_LEASE_SECONDS (%s) must be >= 3x DELIVERY_HTTP_TIMEOUT_SECONDS (%s)",
 			c.LeaseDuration, c.ProviderHTTPTimeout))

@@ -7,9 +7,9 @@ import (
 
 var anchor = time.Date(2026, 11, 22, 12, 0, 0, 0, time.UTC)
 
-// matchesExampleSegment örnek brief'in segmentinin (BLUEPRINT §4.3) Go'daki
+// matchesExampleSegment örnek brief'in segmentinin Go'daki
 // birebir karşılığıdır: city=istanbul AND cart son 30 gün AND sepetten
-// sonra alışveriş yok. SQL compiler Gün 2'de yazılınca integration testi
+// sonra alışveriş yok. Integration testi
 // aynı sayıyı SQL tarafında doğrular.
 func matchesExampleSegment(c Customer, now time.Time) bool {
 	if c.CityKey != "istanbul" || c.LastCartAt == nil {

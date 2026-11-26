@@ -29,6 +29,13 @@ var validCopy = copyJSON(
 	"Merhaba {{first_name}},\n\nSepetine eklediğin ürünleri unutmadık. Bugüne özel %30 indirimle alışverişini şimdi tamamlayabilirsin.\n\nİndirim sınırlı süre geçerli; ürünler tükenmeden göz atmanı öneririz.\n\nSevgiler,\nEkibimiz",
 )
 
+// neutralCopy brief'te yüzde yokken kullanılır: mock da teklif uydurmasın.
+var neutralCopy = copyJSON(
+	"Merhaba {{first_name}}, sepetindekiler seni bekliyor! Alışverişini kaldığın yerden tamamla.",
+	"{{first_name}}, sepetindeki ürünler seni bekliyor",
+	"Merhaba {{first_name}},\n\nSepetine eklediğin ürünleri unutmadık. Dilediğin zaman kaldığın yerden devam edebilirsin.\n\nSevgiler,\nEkibimiz",
+)
+
 // copyFixtures: ad -> (ilk çıktı, onarım çıktısı, akış sonunda dönecek hata).
 // Hatalı fixture'larda metin yine stream edilir: kesilme ve timeout
 // gerçekte de kısmi metinden sonra gelir.
@@ -45,6 +52,10 @@ var copyFixtures = map[string]struct {
 	"unknown_placeholder": {first: copyJSON("Merhaba {{first_name}} {{last_name}}, kupon kodun {{coupon}}.", "Sepetinde %30 indirim", "Merhaba,\n\nİndirim seni bekliyor.")},
 	"invalid_then_repaired": {
 		first:    copyJSON(strings.Repeat("Sepetindeki ürünler seni bekliyor! ", 6), "Sepetinde %30 indirim", "Merhaba,\n\nİndirim seni bekliyor."),
+		repaired: validCopy,
+	},
+	"invented_offer": {
+		first:    copyJSON("Merhaba {{first_name}}, %45 indirim! Kod: SEPET45", "{{first_name}}, %45 indirim", "Detaylar: www.ornek-magaza.com"),
 		repaired: validCopy,
 	},
 	"truncated": {first: `{"sms_text":"Merhaba {{first_name}}, sepetindekiler seni bek`, err: ErrTruncated},
@@ -71,8 +82,11 @@ func (m *Mock) StreamCopy(ctx context.Context, req CopyRequest, onText func(stri
 		if req.Repair != nil && f.repaired != "" {
 			text, ferr = f.repaired, nil
 		}
-	} else if mm := percentRe.FindStringSubmatch(req.Brief); mm != nil {
-		text = strings.ReplaceAll(validCopy, "%30", "%"+mm[1])
+	}
+	if mm := percentRe.FindStringSubmatch(req.Brief); mm != nil {
+		text = strings.ReplaceAll(text, "%30", "%"+mm[1])
+	} else if text == validCopy {
+		text = neutralCopy
 	}
 
 	// Gerçek stream'i taklit: rune sınırlarında 3-11 byte'lık parçalar.

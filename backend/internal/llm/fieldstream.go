@@ -14,7 +14,7 @@ type FieldDelta struct {
 }
 
 // FieldStream düz, yalnızca string alanlı bir JSON objesini parça parça
-// okuyup her alanın ÇÖZÜLMÜŞ metnini artımlı olarak verir (BLUEPRINT §4.6).
+// okuyup her alanın ÇÖZÜLMÜŞ metnini artımlı olarak verir.
 //
 // Neden: Claude structured output'u stream ederken text delta'ları ham JSON
 // metninin parçalarıdır ("{\"sms_te", "xt\":\"Merhaba\\n", ...). UI'a ham

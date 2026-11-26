@@ -2,7 +2,7 @@ package platform
 
 import "time"
 
-// Clock test edilebilir zaman. Segment derlemesi ve (Gün 5) backoff bunu kullanır.
+// Clock test edilebilir zaman. Segment derlemesi ve backoff bunu kullanır.
 type Clock interface{ Now() time.Time }
 
 type SystemClock struct{}

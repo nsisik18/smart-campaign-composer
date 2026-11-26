@@ -7,7 +7,7 @@ import (
 )
 
 // NewLogger JSON slog logger'ı döner. Kural: loglarda email/telefon yok;
-// customer_id, campaign_id, kanal ve hata kodu yazılır (BLUEPRINT §5).
+// customer_id, campaign_id, kanal ve hata kodu yazılır.
 func NewLogger(service, level string) *slog.Logger {
 	var lvl slog.Level
 	switch strings.ToLower(level) {

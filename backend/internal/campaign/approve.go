@@ -41,7 +41,7 @@ func (r *Repository) UpdateContent(ctx context.Context, id int64, expectedVersio
 	return c, err
 }
 
-// Approve onay transaction'ıdır (BLUEPRINT §6.1). Tek transaction içinde:
+// Approve onay transaction'ıdır. Tek transaction içinde:
 //
 //  1. Kampanya satırı FOR UPDATE ile kilitlenir. İki sekmeden eşzamanlı
 //     onayda ikinci istek burada bekler; birincisi commit edince durumu
