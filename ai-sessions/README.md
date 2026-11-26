@@ -6,7 +6,7 @@ Case boyunca Claude ile yapılan çalışma oturumlarının export'ları. Kayıt
 
 | Tarih | Dosya | Kapsam |
 |---|---|---|
-| 2026-11-22 | `2026-11-22-gun1-7.md` (export eklenecek) | Gün 1-7: iskelet → segment → streaming içerik → onay → worker → pano → teslim hazırlığı |
+| 2026-11-22 | `2026-11-22-gun1-7.md` (export eklenecek) | Faz 1-7 (tek oturum): iskelet → segment → streaming içerik → onay → worker → pano → teslim hazırlığı |
 
 ## AI çıktısı nasıl doğrulandı
 
